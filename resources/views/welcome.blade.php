@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Biblioteca</title>
@@ -56,8 +57,16 @@
                     @auth
                     <!-- Mostrar cuando el usuario tiene la sesión iniciada -->
                     <li>
-                        <a href="" data-bs-toggle="modal" data-bs-target="#staticBackdrop2">{{ Auth::user()->nombre }} - Mi perfil</a> <!-- Muestra el nombre del usuario -->
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#staticBackdrop2">{{ Auth::user()->nombre }} - Mi perfil</a> <!-- Muestra el nombre del usuario -->
                     </li>
+
+                    <!-- Verificar roles específicos -->
+                    @if (in_array(Auth::user()->tipo_usuario, ['bibliotecario', 'administrativo', 'directivo']))
+                    <li>
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#adminLibrosModal">Administrar Libros</a>
+                    </li>
+                    @endif
+
                     <li>
                         <form action="{{ route('logout') }}" method="POST">
                             @csrf
@@ -74,6 +83,7 @@
                 </ul>
                 <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
             </nav>
+
 
             <a class="cta-btn d-none d-sm-block"
                 @auth
@@ -427,7 +437,8 @@
                 Swal.fire({
                     icon: 'success',
                     title: '¡Éxito!',
-                    text: '{{ session('success') }}',
+                    text: '{{ session('
+                    success ') }}',
                 });
                 @endif
             });
@@ -499,6 +510,472 @@
                 });
             });
         </script>
+
+
+        <!-- Modal de Bootstrap para Administrar Libros -->
+        <div class="modal fade" id="adminLibrosModal" tabindex="-1" aria-labelledby="adminLibrosModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="adminLibrosModalLabel">Administración</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="libros-tab" data-bs-toggle="tab" data-bs-target="#libros" type="button" role="tab">Libros</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="autores-tab" data-bs-toggle="tab" data-bs-target="#autores" type="button" role="tab">Autores</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="editoriales-tab" data-bs-toggle="tab" data-bs-target="#editoriales" type="button" role="tab">Editoriales</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="adminTabsContent">
+                            <!-- Modal de Administrar Libros -->
+                            <div class="tab-pane fade" id="libros" role="tabpanel">
+                                <div id="librosTableBody">
+                                    <!-- Los libros se cargarán aquí dinámicamente como formularios -->
+                                </div>
+                                <button class="btn btn-primary btn-sm" id="btnAddLibro">Agregar Libro</button>
+                            </div>
+                            <div class="tab-pane fade" id="autores" role="tabpanel">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <h5>Administrar Autores</h5>
+                                    <button class="btn btn-primary btn-sm" id="btnAddAutor">Agregar Autor</button>
+                                </div>
+                                <div id="autoresTableBody">
+                                    <!-- Contenido dinámico cargado por JavaScript -->
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="editoriales" role="tabpanel">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <h5>Administrar Editoriales</h5>
+                                    <button class="btn btn-primary btn-sm" id="btnAddEditorial">Agregar Editorial</button>
+                                </div>
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>Dirección</th>
+                                            <th>Teléfono</th>
+                                            <th>Correo</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="editorialesTableBody">
+                                        <!-- Contenido dinámico cargado por JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const editorialesTableBody = document.getElementById('editorialesTableBody');
+                const btnAddEditorial = document.getElementById('btnAddEditorial');
+
+                // Función para cargar editoriales
+                const cargarEditoriales = async () => {
+                    const response = await fetch('/editoriales/all');
+                    const editoriales = await response.json();
+                    editorialesTableBody.innerHTML = '';
+                    editoriales.forEach(editorial => {
+                        editorialesTableBody.innerHTML += `
+                <tr>
+                    <td>${editorial.nombre}</td>
+                    <td>${editorial.direccion || 'N/A'}</td>
+                    <td>${editorial.telefono || 'N/A'}</td>
+                    <td>${editorial.correo || 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" onclick="editarEditorial(${editorial.id})">Editar</button>
+                        <button class="btn btn-danger btn-sm" onclick="eliminarEditorial(${editorial.id})">Eliminar</button>
+                    </td>
+                </tr>
+            `;
+                    });
+                };
+
+                // Función para agregar editorial
+                btnAddEditorial.addEventListener('click', () => {
+                    const nombre = prompt('Ingrese el nombre de la editorial:');
+                    if (!nombre) return;
+
+                    const datos = {
+                        nombre
+                    };
+                    fetch('/editoriales/store', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(datos),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Editorial creada correctamente.');
+                                cargarEditoriales();
+                            } else {
+                                alert(data.message || 'Error al crear la editorial.');
+                            }
+                        });
+                });
+
+                // Función para editar editorial
+                window.editarEditorial = id => {
+                    const nombre = prompt('Ingrese el nuevo nombre de la editorial:');
+                    if (!nombre) return;
+
+                    const datos = {
+                        id,
+                        nombre
+                    };
+                    fetch('/editoriales/update', {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(datos),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Editorial actualizada correctamente.');
+                                cargarEditoriales();
+                            } else {
+                                alert(data.message || 'Error al actualizar la editorial.');
+                            }
+                        });
+                };
+
+                // Función para eliminar editorial
+                window.eliminarEditorial = id => {
+                    if (!confirm('¿Está seguro de eliminar esta editorial?')) return;
+
+                    fetch('/editoriales/destroy', {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                id
+                            }),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Editorial eliminada correctamente.');
+                                cargarEditoriales();
+                            } else {
+                                alert(data.message || 'Error al eliminar la editorial.');
+                            }
+                        });
+                };
+
+                // Cargar editoriales al abrir el modal
+                document.getElementById('editoriales-tab').addEventListener('shown.bs.tab', cargarEditoriales);
+            });
+
+            document.addEventListener('DOMContentLoaded', function() {
+
+                const autoresTableBody = document.getElementById('autoresTableBody');
+                const btnAddAutor = document.getElementById('btnAddAutor');
+
+                // Función para cargar los autores
+                const cargarAutores = async () => {
+                    try {
+                        const response = await fetch('/autores/all');
+                        const autores = await response.json();
+                        autoresTableBody.innerHTML = '';
+                        autores.forEach(autor => {
+                            autoresTableBody.innerHTML += `
+            <div class="d-flex mb-3" id="autor-${autor.id}">
+                <input type="text" class="form-control me-2" id="nombre-${autor.id}" value="${autor.nombre}" placeholder="Nombre" required>
+                <input type="text" class="form-control me-2" id="apellido_paterno-${autor.id}" value="${autor.apellido_paterno}" placeholder="Apellido Paterno">
+                <input type="text" class="form-control me-2" id="apellido_materno-${autor.id}" value="${autor.apellido_materno}" placeholder="Apellido Materno">
+                <button class="btn btn-warning btn-sm me-2" onclick="editarAutor(${autor.id})">Actualizar</button>
+                <button class="btn btn-danger btn-sm" onclick="eliminarAutor(${autor.id})">Eliminar</button>
+            </div>
+            `;
+                        });
+                    } catch (error) {
+                        alert('Error al cargar los autores');
+                    }
+                };
+
+                // Mostrar el modal para agregar un autor
+                document.getElementById('btnAddAutor').addEventListener('click', () => {
+                    const nombre = prompt('Ingrese el nombre del autor:');
+                    if (!nombre) return;
+
+                    const datos = {
+                        nombre
+                    };
+
+                    fetch('/autores/store', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                nombre,
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            alert('Autor agregado correctamente.');
+                            cargarAutores(); // Recargar la lista de autores
+                        })
+                        .catch(error => {
+                            alert('Error al agregar autor');
+                            console.error(error);
+                        });
+
+                });
+
+                // Función para editar un autor
+                window.editarAutor = (id) => {
+                    const nombre = document.getElementById(`nombre-${id}`).value;
+                    const apellidoPaterno = document.getElementById(`apellido_paterno-${id}`).value;
+                    const apellidoMaterno = document.getElementById(`apellido_materno-${id}`).value;
+
+                    fetch('/autores/update', {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                id,
+                                nombre,
+                                apellido_paterno: apellidoPaterno,
+                                apellido_materno: apellidoMaterno
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Autor actualizado correctamente.');
+                                cargarAutores();
+                            } else {
+                                alert(data.message || 'Error al actualizar el autor.');
+                            }
+                        });
+                };
+
+                // Función para eliminar un autor
+                window.eliminarAutor = (id) => {
+                    if (confirm('¿Está seguro de eliminar este autor?')) {
+                        fetch('/autores/destroy', {
+                                method: 'DELETE',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                },
+                                body: JSON.stringify({
+                                    id
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    alert('Autor eliminado correctamente.');
+                                    cargarAutores();
+                                } else {
+                                    alert(data.message || 'Error al eliminar el autor.');
+                                }
+                            })
+                            .catch(error => alert('Error al eliminar el autor'));
+                    }
+                };
+
+                // Cargar autores cuando se abre la pestaña del modal
+                document.getElementById('autores-tab').addEventListener('shown.bs.tab', cargarAutores);
+
+                // Cargar la lista inicial de autores
+                cargarAutores();
+            });
+
+            document.addEventListener('DOMContentLoaded', function() {
+                const librosTableBody = document.getElementById('librosTableBody');
+                const btnAddLibro = document.getElementById('btnAddLibro');
+
+                // Función para cargar los libros
+                const cargarLibros = async () => {
+                    try {
+                        const response = await fetch('/libros/all');
+                        const libros = await response.json();
+                        librosTableBody.innerHTML = '';
+
+                        libros.forEach(libro => {
+                            // Crear formulario para cada libro
+                            librosTableBody.innerHTML += `
+                <div class="d-flex mb-3" id="libro-${libro.id}">
+                    <input type="text" class="form-control me-2" id="titulo-${libro.id}" value="${libro.titulo}" placeholder="Título" required>
+                    <select class="form-control me-2" id="editorial-${libro.id}">
+                        <option value="">Seleccionar Editorial</option>
+                        <!-- Las editoriales se cargarán aquí -->
+                    </select>
+                    <select class="form-control me-2" id="autor-${libro.id}">
+                        <option value="">Seleccionar Autor</option>
+                        <!-- Los autores se cargarán aquí -->
+                    </select>
+                    <input type="text" class="form-control me-2" id="codigo-${libro.id}" value="${libro.codigo}" placeholder="Código" required>
+                    <button class="btn btn-warning btn-sm me-2" onclick="editarLibro(${libro.id})">Actualizar</button>
+                    <button class="btn btn-danger btn-sm" onclick="eliminarLibro(${libro.id})">Eliminar</button>
+                </div>
+                `;
+                            // Cargar las editoriales y autores al formulario
+                            cargarEditoriales(libro.id);
+                            cargarAutores(libro.id);
+                        });
+                    } catch (error) {
+                        alert('Error al cargar los libros');
+                    }
+                };
+
+                // Función para cargar las editoriales en el select
+                const cargarEditoriales = async (libroId) => {
+                    try {
+                        const response = await fetch('/editoriales/all');
+                        const editoriales = await response.json();
+                        const selectEditorial = document.getElementById(`editorial-${libroId}`);
+
+                        editoriales.forEach(editorial => {
+                            const option = document.createElement('option');
+                            option.value = editorial.id;
+                            option.textContent = editorial.nombre;
+                            selectEditorial.appendChild(option);
+                        });
+                    } catch (error) {
+                        alert('Error al cargar las editoriales');
+                    }
+                };
+
+                // Función para cargar los autores en el select
+                const cargarAutores = async (libroId) => {
+                    try {
+                        const response = await fetch('/autores/all');
+                        const autores = await response.json();
+                        const selectAutor = document.getElementById(`autor-${libroId}`);
+
+                        autores.forEach(autor => {
+                            const option = document.createElement('option');
+                            option.value = autor.id;
+                            option.textContent = autor.nombre;
+                            selectAutor.appendChild(option);
+                        });
+                    } catch (error) {
+                        alert('Error al cargar los autores');
+                    }
+                };
+
+                // Función para editar un libro
+                window.editarLibro = (id) => {
+                    const titulo = document.getElementById(`titulo-${id}`).value;
+                    const editorialId = document.getElementById(`editorial-${id}`).value;
+                    const autorId = document.getElementById(`autor-${id}`).value;
+                    const codigo = document.getElementById(`codigo-${id}`).value;
+
+                    // Enviar los datos al servidor para actualizar el libro
+                    fetch('/libros/update', {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                id,
+                                titulo,
+                                editorial_id: editorialId,
+                                autor_id: autorId,
+                                codigo
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Libro actualizado correctamente.');
+                                cargarLibros();
+                            } else {
+                                alert('Error al actualizar el libro.');
+                            }
+                        });
+                };
+
+                // Función para eliminar un libro
+                window.eliminarLibro = (id) => {
+                    if (confirm('¿Está seguro de eliminar este libro?')) {
+                        fetch('/libros/destroy', {
+                                method: 'DELETE',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                },
+                                body: JSON.stringify({
+                                    id
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    alert('Libro eliminado correctamente.');
+                                    cargarLibros();
+                                } else {
+                                    alert('Error al eliminar el libro.');
+                                }
+                            });
+                    }
+                };
+
+                // Mostrar el modal para agregar un libro
+                btnAddLibro.addEventListener('click', () => {
+                    const nombre = prompt('Ingrese el nombre del libro:');
+                    if (!nombre) return;
+
+                    const datos = {
+                        nombre
+                    };
+                    fetch('/libros/store', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify(datos)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            alert('Libro agregado correctamente.');
+                            cargarLibros();
+                        })
+                        .catch(error => {
+                            alert('Error al agregar el libro.');
+                            console.error(error);
+                        });
+                });
+
+                // Cargar los libros cuando se abre la pestaña
+                document.getElementById('libros-tab').addEventListener('shown.bs.tab', cargarLibros);
+
+                // Cargar la lista de libros al cargar la página
+                cargarLibros();
+            });
+        </script>
+
         <!-- fin modales seccion  -->
     </main>
 
@@ -567,7 +1044,7 @@
 
     <!-- Preloader -->
     <div id="preloader"></div>
-No code was selected to improve.
+    No code was selected to improve.
 
     <!-- Vendor JS Files -->
     <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
