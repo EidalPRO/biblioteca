@@ -511,16 +511,17 @@
             });
         </script>
 
-
+        @auth
         <!-- Modal de Bootstrap para Administrar Libros -->
         <div class="modal fade" id="adminLibrosModal" tabindex="-1" aria-labelledby="adminLibrosModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="adminLibrosModalLabel">Administración</h5>
+                        <h5 class="modal-title" id="adminLibrosModalLabel">Administración - (!Este apartado aun esta en construcción y pruebas, puede presentar errores¡)</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
+                        <p>Estamos trabajando para mejorar esta sección.</p>
                         <ul class="nav nav-tabs" id="adminTabs" role="tablist">
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link active" id="libros-tab" data-bs-toggle="tab" data-bs-target="#libros" type="button" role="tab">Libros</button>
@@ -530,6 +531,9 @@
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="editoriales-tab" data-bs-toggle="tab" data-bs-target="#editoriales" type="button" role="tab">Editoriales</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="informes-tab" data-bs-toggle="tab" data-bs-target="#inventario" type="button" role="tab">Inventario</button>
                             </li>
                         </ul>
                         <div class="tab-content" id="adminTabsContent">
@@ -569,7 +573,12 @@
                                     </tbody>
                                 </table>
                             </div>
-
+                            <div class="tab-pane fade" id="inventario" role="tabpanel">
+                                <div class="d-flex justify-content-between mb-3">
+                                    <h5>Inventario</h5>
+                                    <button class="btn btn-primary btn-sm" id="btnGenerarReporte">Generar Reporte</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -579,6 +588,36 @@
 
 
         <script>
+            document.getElementById('btnGenerarReporte').addEventListener('click', () => {
+                fetch('/informes/generar-reporte', {
+                        method: 'GET',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('No se pudo generar el reporte.');
+                        }
+                        return response.blob(); // Procesa la respuesta como un archivo binario
+                    })
+                    .then(blob => {
+                        // Crea un enlace para descargar el archivo
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'reporte_inventario.pdf'; // Nombre del archivo para descargar
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    })
+                    .catch(error => {
+                        alert('Error al generar el reporte: ' + error.message);
+                        console.error(error);
+                    });
+            });
+
+
             document.addEventListener('DOMContentLoaded', function() {
                 const editorialesTableBody = document.getElementById('editorialesTableBody');
                 const btnAddEditorial = document.getElementById('btnAddEditorial');
@@ -975,6 +1014,7 @@
                 cargarLibros();
             });
         </script>
+        @endauth
 
         <!-- fin modales seccion  -->
     </main>

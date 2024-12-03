@@ -33,4 +33,6 @@ class Prestamo extends Model
     {
         return $this->belongsToMany(Ejemplar::class, 'prestamo_ejemplar');
     }
+
+    
 }

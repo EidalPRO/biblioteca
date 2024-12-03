@@ -46,4 +46,9 @@ class Usuario extends Authenticatable
     {
         return $this->hasMany(Prestamo::class)->where('estado_prestamo', '!=', 'devuelto');
     }
+
+    public function prestamos()
+    {
+        return $this->hasMany(Prestamo::class, 'usuario_id');
+    }
 }

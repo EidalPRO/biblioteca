@@ -6,6 +6,7 @@ use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CatalogoController;
 use App\Http\Controllers\EditorialController;
+use App\Http\Controllers\InformeController;
 use App\Http\Controllers\LibroController;
 use App\Http\Controllers\RentaController;
 
@@ -41,4 +42,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/editoriales/destroy', [EditorialController::class, 'destroy'])->name('editoriales.destroy');
     Route::get('/editoriales/all', [EditorialController::class, 'index'])->name('editoriales.all');
     Route::get('/editoriales/{id}', [EditorialController::class, 'show'])->name('editoriales.show');
+
+    Route::get('/informes/generar-reporte', [InformeController::class, 'generarReporte'])->name('informes.reporte');
+
 });
